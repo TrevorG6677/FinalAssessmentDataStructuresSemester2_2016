@@ -9,15 +9,16 @@ using System.Text;
 
 namespace Easter2016
 {
-    class SimpleSpriteManager: DrawableGameComponent
+    class SimpleSpriteManager : DrawableGameComponent
     {
         SoundEffectInstance _audioPlayer;
         List<SimpleSprite> _blackKnights = new List<SimpleSprite>();
-        LinkedList<TimedSprite> timed = new LinkedList<TimedSprite>();
-        TimeSpan TimePassed;
+        //LinkedList<TimedSprite> timed = new LinkedList<TimedSprite>();
+        //TimeSpan TimePassed;
         Player player;
         Tower startTower;
         Tower playerTower;
+        Queue<SimpleSprite> scoreIcon = new Queue<SimpleSprite>();
 
         public SimpleSpriteManager(Game g) : base(g)
         {
@@ -28,31 +29,31 @@ namespace Easter2016
         {
             LoadAssets();
             setupObjects();
-            for (int i = 0; i < 5; i++)
-            {
-                TimedSprite next = new TimedSprite(Game, "cannonball", new Vector2(Utilities.Utility.NextRandom(200), Utilities.Utility.NextRandom(200)));
-                addtoTimes(next);
-            }
+            //for (int i = 0; i < 5; i++)
+            //{
+            //    //TimedSprite next = new TimedSprite(Game, "cannonball", new Vector2(Utilities.Utility.NextRandom(200), Utilities.Utility.NextRandom(200)));
+            //    //addtoTimes(next);
+            //}
 
             base.LoadContent();
         }
 
-        private void addtoTimes(TimedSprite timedSprite)
-        {
-            if (timed.Count == 0)
-                timed.AddFirst(timedSprite);
-            else
-            {
-                LinkedListNode<TimedSprite> current = timed.First;
-                while (current != timed.Last && timedSprite.Activate >= current.Value.Activate)
-                    current = current.Next;
-                if (current == timed.Last && timedSprite.Activate >= current.Value.Activate)
-                    timed.AddAfter(timed.First, timedSprite);
-                else
-                    timed.AddBefore(current, timedSprite);
-            }
+        //private void addtoTimes(TimedSprite timedSprite)
+        //{
+        //    if (timed.Count == 0)
+        //        timed.AddFirst(timedSprite);
+        //    else
+        //    {
+        //        LinkedListNode<TimedSprite> current = timed.First;
+        //        while (current != timed.Last && timedSprite.Activate >= current.Value.Activate)
+        //            current = current.Next;
+        //        if (current == timed.Last && timedSprite.Activate >= current.Value.Activate)
+        //            timed.AddAfter(timed.First, timedSprite);
+        //        else
+        //            timed.AddBefore(current, timedSprite);
+        //    }
 
-        }
+        //}
 
         private void removeSimpleSpriteComponents()
         {
@@ -67,25 +68,25 @@ namespace Easter2016
 
             // Players Tower is bottom left
             Vector2 PlayerTowerPos = new Vector2(0,
-            GraphicsDevice.Viewport.Height 
+            GraphicsDevice.Viewport.Height
                   - LoadedGameContent.Textures["End Tower"].Height
-            
+
             );
 
             // Player is placed bottom left of the Viewport
             Vector2 playerPosition = PlayerTowerPos + new Vector2(LoadedGameContent.Textures["Player"].Width,
                         -LoadedGameContent.Textures["Player"].Height
-                        ) ;
+                        );
 
             Vector2 startTowerPos = new Vector2(GraphicsDevice.Viewport.Width - LoadedGameContent.Textures["Start Tower"].Width,
             0
             );
 
-            SimpleSprite background =  new SimpleSprite(Game, "background", Vector2.Zero);
+            SimpleSprite background = new SimpleSprite(Game, "background", Vector2.Zero);
             background.Active = true;
 
             player = new Player(Game, "Player", playerPosition);
-            playerTower = new Tower(Game, "End Tower", PlayerTowerPos );
+            playerTower = new Tower(Game, "End Tower", PlayerTowerPos, 100,true);
             startTower = new Tower(Game, "Start Tower", startTowerPos);
 
             for (int i = 0; i < 5; i++)
@@ -96,13 +97,13 @@ namespace Easter2016
 
                 SimpleSprite s = new SimpleSprite(Game, "Black Knight", startTowerPos, path);
                 _blackKnights.Add(s);
-                
+
             }
             _blackKnights.First().Active = true;
             _blackKnights.First().followPath();
         }
 
-        public  void monitorKnights()
+        public void monitorKnights()
         {
             // if they are not all stopped then there is at least one active
             var _activeKnights = _blackKnights
@@ -126,7 +127,7 @@ namespace Easter2016
                 _blackKnights.First().Active = true;
                 _blackKnights.First().followPath();
             }
-            else 
+            else
             {
                 // Check for collision with the tower 
                 // NOTE: we only delete the first one.
@@ -137,11 +138,12 @@ namespace Easter2016
                 {
                     if (playerTower.Collision(enemy))
                     {
+                        playerTower._health = playerTower._health - 20;
                         LoadedGameContent.Sounds["Impact"].Play();
                         Game.Components.Remove(enemy);
                         _blackKnights.Remove(enemy);
                         break;
-                   }
+                    }
                 }
 
             }
@@ -156,7 +158,7 @@ namespace Easter2016
             LoadedGameContent.Textures.Add("cannonball", Game.Content.Load<Texture2D>("cannonball"));
             LoadedGameContent.Textures.Add("Start Tower", Game.Content.Load<Texture2D>("Start Tower"));
             LoadedGameContent.Textures.Add("End Tower", Game.Content.Load<Texture2D>("End Tower"));
-            LoadedGameContent.Textures.Add("background",Game.Content.Load<Texture2D>("background"));
+            LoadedGameContent.Textures.Add("background", Game.Content.Load<Texture2D>("background"));
             LoadedGameContent.Textures.Add("Player", Game.Content.Load<Texture2D>("Player"));
             LoadedGameContent.Fonts.Add("SimpleSpriteFont", Game.Content.Load<SpriteFont>("SimpleSpriteFont"));
 
@@ -172,7 +174,7 @@ namespace Easter2016
             // remove any cannon all that is not moving
             var removalList = Game.Components.OfType<SimpleSprite>()
                 .Where(s => s.Stopped() && s.Name == "cannonball").ToList();
-            if(removalList.Count() > 0)
+            if (removalList.Count() > 0)
                 LoadedGameContent.Sounds["Impact"].Play();
             foreach (var item in removalList)
                 Game.Components.Remove(item);
@@ -190,6 +192,8 @@ namespace Easter2016
                 {
                     if (b.Collision(enemy))
                     {
+                        //scoreIcon.Enqueue(new SimpleSprite(Game,"blackKnights",new Vector2));
+                        MontorPoints();
                         LoadedGameContent.Sounds["Impact"].Play();
                         Game.Components.Remove(b);
                         Game.Components.Remove(enemy);
@@ -199,36 +203,47 @@ namespace Easter2016
             }
         }
 
+        public void MontorPoints()
+        {
+            int _amountKilled = 0;
+
+            if (_amountKilled != 10)
+            {
+                
+                SimpleSprite s = new SimpleSprite(Game, "BlackKnight", new Vector2(10, 10));
+            }
+        }
+
         public override void Update(GameTime gameTime)
         {
-            TimePassed = gameTime.TotalGameTime;
-            checkTimedObjects();
+            //TimePassed = gameTime.TotalGameTime;
+            //checkTimedObjects();
             MonitorCannonBalls();
             monitorKnights();
             base.Update(gameTime);
         }
 
-        private void checkTimedObjects()
-        {
-            var deadTimed = Game.Components.OfType<TimedSprite>()
-                            .Where(t => !t.Alive).ToList();
-            foreach (TimedSprite t in deadTimed)
-            {
-                timed.Remove(t);
-                Game.Components.Remove(t);
-            }
-            if(timed.Count < 1)
-            {
-                for (int i = 0; i < 5; i++)
-                {
-                    TimedSprite next = new TimedSprite(Game, "cannonball", new Vector2(Utilities.Utility.NextRandom(200), Utilities.Utility.NextRandom(200)));
-                    next.Activate += TimePassed;
-                    next.Survival += TimePassed;
-                    addtoTimes(next);
-                }
+        //private void checkTimedObjects()
+        //{
+        //    var deadTimed = Game.Components.OfType<TimedSprite>()
+        //                    .Where(t => !t.Alive).ToList();
+        //    foreach (TimedSprite t in deadTimed)
+        //    {
+        //        timed.Remove(t);
+        //        Game.Components.Remove(t);
+        //    }
+        //    if(timed.Count < 1)
+        //    {
+        //        for (int i = 0; i < 5; i++)
+        //        {
+        //            TimedSprite next = new TimedSprite(Game, "cannonball", new Vector2(Utilities.Utility.NextRandom(200), Utilities.Utility.NextRandom(200)));
+        //            next.Activate += TimePassed;
+        //            next.Survival += TimePassed;
+        //            addtoTimes(next);
+        //        }
 
-            }
+        //    }
 
-        }
+        //}
     }
 }
